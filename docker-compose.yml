@@ -110,8 +110,7 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
     volumes:
       - ./nginx/certs:/etc/nginx/certs:ro      # mount your TLS certs here
     depends_on:
