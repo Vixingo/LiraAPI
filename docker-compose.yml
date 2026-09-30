@@ -55,13 +55,14 @@ services:
       context: .
       dockerfile: Dockerfile.api
     restart: unless-stopped
-    env_file:
-      - .env
+    env_file: [.env]
     environment:
       DATABASE_URL:        postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}
       REDIS_URL:           redis://redis:6379/0
       FRONTEND_URL:        ${FRONTEND_URL:-*}
       CACHE_TTL_SECONDS:   ${CACHE_TTL_SECONDS:-30}
+    ports:
+      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,10 +82,11 @@ services:
       context: .
       dockerfile: Dockerfile.scheduler
     restart: unless-stopped
-    env_file:
-      - .env
+    env_file: [.env]
     environment:
-      DATABASE_URL:           postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}
+      POSTGRES_DB:       ${POSTGRES_DB:-postgres}
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       SCRAPER_MIN_INTERVAL:   ${SCRAPER_MIN_INTERVAL:-30}
       SCRAPER_MAX_INTERVAL:   ${SCRAPER_MAX_INTERVAL:-60}
     depends_on:
@@ -112,7 +114,8 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/certs:/etc/nginx/certs:ro      # mount your TLS certs here
     depends_on:
