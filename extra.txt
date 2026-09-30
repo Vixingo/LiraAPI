@@ -1,0 +1,20 @@
+"""
+        "extraction_metadata": {
+            "timestamp_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "execution_mode": "Pure Dynamic Web Scraping (No Static Hardcoding)",
+            "sources_queried": [
+                "https://cb.gov.sy/index.php?lang=2",
+                "http://moe.gov.sy/",
+                "https://sypnow.com/en/fuel",
+            ],
+        },
+        "central_bank_data": {
+            "source": "cb.gov.sy",
+            "extraction_status": cbs_data["status"],
+            "official_exchange_rates_against_syp": cbs_data["rates"],
+            "latest_bulletins_and_news": cbs_data["news"],
+        },
+        "electricity_sector_data": {
+            "source": "moe.gov.sy",
+            "official_news_and_tenders": moe_news,
+        },"""
