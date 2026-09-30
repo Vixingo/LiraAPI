@@ -10,22 +10,23 @@ Usage:
 """
 
 import logging
+import os
 import random
 import threading
 import time
 from datetime import datetime
 
-# ── scraper imports ────────────────────────────────────────────────────────────
-from energy import (
-    DB_CONFIG,
+# ── scraper imports (from scraper_manager package) ─────────────────────────────
+from scraper_manager.energy import (
     initialize_postgresql_db,
     scrape_central_bank_live,
     scrape_ministry_electricity_live,
     scrape_live_fuel_rates,
     upsert_to_postgres,
 )
-from metals import scrape_gold_prices          # see note below
-from news import fetch_articles, upsert_articles
+from scraper_manager.metals import scrape_gold_prices
+from scraper_manager.news import fetch_articles, upsert_articles
+from scraper_manager.base import db_config
 
 # ── logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -36,16 +37,16 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── constants ──────────────────────────────────────────────────────────────────
-MIN_INTERVAL = 30   # seconds
-MAX_INTERVAL = 60   # seconds
+MIN_INTERVAL = int(os.environ.get("SCRAPER_MIN_INTERVAL", 30))  # seconds
+MAX_INTERVAL = int(os.environ.get("SCRAPER_MAX_INTERVAL", 60))  # seconds
 
 # ── individual scraper jobs ────────────────────────────────────────────────────
 
-def job_energy():
+def job_energy() -> None:
     """Scrapes exchange rates, news, and fuel prices then upserts to Postgres."""
     log.info("energy: starting scrape")
     try:
-        conn = initialize_postgresql_db(DB_CONFIG)
+        conn = initialize_postgresql_db()
         cbs_rates, cbs_news = scrape_central_bank_live()
         moe_news = scrape_ministry_electricity_live()
         fuel_rates = scrape_live_fuel_rates()
@@ -61,58 +62,61 @@ def job_energy():
         log.exception("energy: scrape failed")
 
 
-def job_metals():
+def job_metals() -> None:
     """Scrapes 21-karat gold buy/sell prices."""
     log.info("metals: starting scrape")
     try:
         data = scrape_gold_prices()
         if data:
-            log.info("metals: buy=%s sell=%s SYP/g", data.get("buy"), data.get("sell"))
+            log.info(
+                "metals: buy=%s sell=%s SYP/g",
+                data.get("buy"),
+                data.get("sell"),
+            )
         else:
             log.warning("metals: no data returned")
     except Exception:
         log.exception("metals: scrape failed")
 
 
-def job_news():
-    """Fetches Ministry of Energy articles and upserts to Postgres."""
+def job_news() -> None:
+    """Fetches and upserts Ministry of Energy news articles."""
     log.info("news: starting fetch")
     try:
         articles = fetch_articles()
-        if articles:
-            upsert_articles(articles)
-            log.info("news: upserted %d articles", len(articles))
-        else:
-            log.warning("news: no articles returned")
+        upsert_articles(articles)
+        log.info("news: done — %d articles processed", len(articles))
     except Exception:
         log.exception("news: fetch failed")
 
 
 # ── scheduler loop ─────────────────────────────────────────────────────────────
 
-def run_job_in_thread(job_fn):
-    """Launches a job function in a daemon thread so it doesn't block the loop."""
+def _run_in_thread(job_fn):
+    """Launches a job function in a daemon thread."""
     t = threading.Thread(target=job_fn, name=job_fn.__name__, daemon=True)
     t.start()
     return t
 
 
-def scheduler_loop(jobs: list, stop_event: threading.Event):
+def scheduler_loop(jobs: list, stop_event: threading.Event) -> None:
     """
     Main loop:
       1. Fire every job in its own thread.
-      2. Wait for all threads to finish (or time out after MAX_INTERVAL).
+      2. Wait for all threads to finish (cap at MAX_INTERVAL).
       3. Sleep for a random interval before the next cycle.
     """
     cycle = 0
     while not stop_event.is_set():
         cycle += 1
-        log.info("=== cycle %d started at %s ===", cycle, datetime.utcnow().isoformat())
+        log.info(
+            "=== cycle %d started at %s ===",
+            cycle,
+            datetime.utcnow().isoformat(),
+        )
 
-        threads = [run_job_in_thread(job) for job in jobs]
+        threads = [_run_in_thread(job) for job in jobs]
 
-        # Wait for all jobs to complete (cap at MAX_INTERVAL so we never fall
-        # behind even if a scraper hangs)
         for t in threads:
             t.join(timeout=MAX_INTERVAL)
 
@@ -127,7 +131,6 @@ def scheduler_loop(jobs: list, stop_event: threading.Event):
 
 if __name__ == "__main__":
     stop = threading.Event()
-
     try:
         scheduler_loop(
             jobs=[job_energy, job_metals, job_news],

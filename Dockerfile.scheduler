@@ -1,0 +1,27 @@
+# ── Dockerfile.scheduler — Scraper / Scheduler service ────────────────────────
+FROM python:3.12-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# System deps for psycopg2 and lxml/BeautifulSoup
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq-dev \
+        gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy scheduler + scraper package
+COPY scheduler.py .
+COPY scraper_manager/ ./scraper_manager/
+
+# Non-root user for security
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+USER appuser
+
+CMD ["python", "-u", "scheduler.py"]
