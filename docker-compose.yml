@@ -113,7 +113,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/certs:/etc/nginx/certs:ro      # mount your TLS certs here
     depends_on:
       - fastapi
