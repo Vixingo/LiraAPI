@@ -55,7 +55,8 @@ services:
       context: .
       dockerfile: Dockerfile.api
     restart: unless-stopped
-    env_file: [.env]
+    env_file:
+      - .env
     environment:
       DATABASE_URL:        postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}
       REDIS_URL:           redis://redis:6379/0
@@ -80,7 +81,8 @@ services:
       context: .
       dockerfile: Dockerfile.scheduler
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - .env
     environment:
       DATABASE_URL:           postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}
       SCRAPER_MIN_INTERVAL:   ${SCRAPER_MIN_INTERVAL:-30}
