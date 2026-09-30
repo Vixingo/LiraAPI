@@ -20,6 +20,8 @@ import redis
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from scraper_manager.base import db_config
+
 # ── app ────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Market Data API", version="2.0.0")
@@ -76,22 +78,9 @@ def _cache_invalidate(pattern: str) -> None:
 
 # ── PostgreSQL ─────────────────────────────────────────────────────────────────
 
-def _database_options() -> dict[str, Any]:
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        return {"dsn": database_url}
-    return {
-        "dbname":   os.getenv("POSTGRES_DB",       "postgres"),
-        "user":     os.getenv("POSTGRES_USER",     "postgres"),
-        "password": os.getenv("POSTGRES_PASSWORD", "Vixingo"),
-        "host":     os.getenv("POSTGRES_HOST",     "localhost"),
-        "port":     os.getenv("POSTGRES_PORT",     "5432"),
-    }
-
-
 @contextmanager
 def database_connection() -> Iterator[Any]:
-    connection = psycopg2.connect(**_database_options())
+    connection = psycopg2.connect(**db_config())
     try:
         yield connection
     finally:

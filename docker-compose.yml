@@ -84,11 +84,9 @@ services:
     restart: unless-stopped
     env_file: [.env]
     environment:
-      POSTGRES_DB:       ${POSTGRES_DB:-postgres}
-      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      SCRAPER_MIN_INTERVAL:   ${SCRAPER_MIN_INTERVAL:-30}
-      SCRAPER_MAX_INTERVAL:   ${SCRAPER_MAX_INTERVAL:-60}
+      DATABASE_URL:            postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}
+      SCRAPER_MIN_INTERVAL:    ${SCRAPER_MIN_INTERVAL:-30}
+      SCRAPER_MAX_INTERVAL:    ${SCRAPER_MAX_INTERVAL:-60}
     depends_on:
       postgres:
         condition: service_healthy

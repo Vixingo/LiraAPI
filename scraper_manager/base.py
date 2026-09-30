@@ -30,19 +30,30 @@ def get_logger(name: str) -> logging.Logger:
 
 def db_config() -> dict[str, Any]:
     """
-    Returns psycopg2 connection kwargs sourced from environment variables.
-    Falls back to the values used during local development if vars are absent.
+    Returns psycopg2 connection kwargs sourced entirely from environment
+    variables — no credentials are hardcoded here.
+
+    Inside Docker the compose file injects DATABASE_URL, so all services
+    connect to the ``postgres`` container automatically.  For local dev
+    outside Docker, set the POSTGRES_* variables (or DATABASE_URL) in .env.
     """
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         return {"dsn": database_url}
 
+    password = os.getenv("POSTGRES_PASSWORD")
+    if not password:
+        raise RuntimeError(
+            "No database credentials found. "
+            "Set DATABASE_URL or POSTGRES_PASSWORD in the environment."
+        )
+
     return {
-        "dbname":   os.getenv("POSTGRES_DB",       "postgres"),
-        "user":     os.getenv("POSTGRES_USER",     "postgres"),
-        "password": os.getenv("POSTGRES_PASSWORD", "Vixingo"),
-        "host":     os.getenv("POSTGRES_HOST",     "localhost"),
-        "port":     os.getenv("POSTGRES_PORT",     "5432"),
+        "dbname":   os.getenv("POSTGRES_DB",   "postgres"),
+        "user":     os.getenv("POSTGRES_USER", "postgres"),
+        "password": password,
+        "host":     os.getenv("POSTGRES_HOST", "postgres"),   # service name in Docker
+        "port":     os.getenv("POSTGRES_PORT", "5432"),
     }
 
 
